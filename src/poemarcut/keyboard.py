@@ -482,16 +482,12 @@ def on_release(  # noqa: C901, PLR0911, PLR0912, PLR0915
                     logger.info("Attempting to select next currency '%s' in dropdown.", next_cur_type)
                     # tab to switch focus to currency dropdown
                     pyautogui.press("tab")
+                    time.sleep(0.6)  # long delay is needed for the dropdown to be ready
 
-                    # move the selection in the dropdown by typing the prefix, or using arrow keys
-                    prefix = merchant_currency_prefixes[next_cur_type]
-                    time.sleep(0.6)  # long delay is needed for the dropdown to be ready for whatever reason
-
-                    # typing to select from dropdown doesn't work well with more than ~3 characters, since there's a timeout
-                    if len(prefix) <= 3:  # noqa: PLR2004
-                        pyautogui.write(prefix, interval=0.1)
-                    # for longer prefixes, we need to determine the numerical difference of the indexes and then use arrow keys
-                    elif last_cur_type is not None:
+                    # 한국어/영어 클라이언트 공통: 인덱스 차이를 방향키로 이동
+                    # (한국어 클라이언트는 영문 prefix 타이핑이 동작하지 않으므로
+                    #  prefix 길이와 무관하게 항상 화살표 키 방식을 사용)
+                    if last_cur_type is not None and last_cur_type in merchant_currency_prefixes:
                         cur_index = list(merchant_currency_prefixes.keys()).index(last_cur_type)
                         target_index = list(merchant_currency_prefixes.keys()).index(next_cur_type)
                         index_diff = target_index - cur_index
@@ -503,10 +499,11 @@ def on_release(  # noqa: C901, PLR0911, PLR0912, PLR0915
                             for _ in range(-index_diff):
                                 pyautogui.press("up")
                                 time.sleep(0.1)
+                        # index_diff == 0 이면 이미 올바른 항목 선택됨
                     else:
                         logger.warning(
-                            "Unable to select next currency because current currency type is unknown and next currency prefix '%s' is too long.",
-                            prefix,
+                            "Unable to select next currency: current currency type '%s' is unknown or not in prefix map.",
+                            last_cur_type,
                         )
                         return True  # do nothing
 

@@ -131,3 +131,50 @@ POE2_MERCHANT_CURRENCY_PREFIXES = MappingProxyType(
         "wisdom": "s",
     }
 )
+
+# ──────────────────────────────────────────────
+# 한국어 클라이언트 통화명 → trade id 역매핑
+# 게임 내 표기명을 기준으로 작성했습니다.
+# ──────────────────────────────────────────────
+KR_CURRENCY_NAME_TO_ID = {
+    # PoE1
+    "혼돈의 오브": "chaos",
+    "신성한 오브": "divine",
+    "연금술의 오브": "alch",
+    "고귀한 오브": "exalted",
+    "변화의 오브": "alt",
+    "칼란드라의 거울": "mirror",
+    "색채의 오브": "chrome",
+    "축복의 오브": "blessed",
+    "융합의 오브": "fusing",
+    "보석공의 오브": "jewellers",
+    "고귀화의 오브": "regal",
+    "바알 오브": "vaal",
+    "기회의 오브": "chance",
+    "무효의 오브": "annul",
+    "증폭의 오브": "aug",
+    "후회의 오브": "regret",
+    "정화의 오브": "scour",
+    "변환의 오브": "transmute",
+    "지혜의 두루마리": "wisdom",
+    "차원문 두루마리": "portal",
+    "갑옷공의 스크랩": "scrap",
+    "대장장이의 숫돌": "whetstone",
+    "보석 세공인의 프리즘": "gcp",
+    "유리공의 구슬": "bauble",
+    # PoE2
+    "고귀한 오브": "exalted",          # PoE2도 동일
+    "신성한 오브": "divine",            # PoE2도 동일
+    "혼돈의 오브": "chaos",             # PoE2도 동일
+    "연금술의 오브": "alch",
+    "무효의 오브": "annul",
+    "고귀화의 오브": "regal",
+    "변환의 오브": "transmute",
+    "증폭의 오브": "aug",
+    "기회의 오브": "chance",
+    "바알 오브": "vaal",
+    "장인의 오브": "artificers",
+    "파열의 오브": "fracturing-orb",
+    "칼란드라의 거울": "mirror",
+    "지혜의 두루마리": "wisdom",
+}
