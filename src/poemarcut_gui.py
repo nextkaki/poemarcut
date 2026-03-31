@@ -126,9 +126,19 @@ qradiobutton_redlight = qradiobutton_light.replace("background-color: black", f"
 
 # Friendly display overrides for special poe.ninja league ids (case-insensitive)
 LEAGUE_DISPLAY_OVERRIDES: dict[str, str] = {
-    "tmpstandard": "Current league",
-    "tmphardcore": "Current hardcore league",
+    "tmpstandard": "현재 리그",
+    "tmphardcore": "현재 하드코어 리그",
 }
+
+KEY_SETTING_LABELS = MappingProxyType(
+    {
+        "copyitem_key": "아이템 복사 키",
+        "rightclick_key": "우클릭 키",
+        "calcprice_key": "가격 계산 키",
+        "enter_key": "확정 키",
+        "stop_key": "중지 키",
+    }
+)
 
 # Determine base path for bundled resources. When run from a PyInstaller
 # onefile bundle, resources are extracted into the runtime folder
@@ -170,7 +180,7 @@ class PoEMarcutGUI(QMainWindow):
         super().__init__()
         # Use the shared SettingsManager singleton
         self.settings_manager: settings.SettingsManager = settings.settings_manager
-        self.setWindowTitle("PoE Marcut")
+        self.setWindowTitle("PoEMarcut")
         # Initialize window geometry from saved settings
         try:
             gui_settings = self.settings_manager.settings.gui
@@ -185,7 +195,7 @@ class PoEMarcutGUI(QMainWindow):
 
         font_id: int = QFontDatabase.addApplicationFont(str(font_path))
         if font_id == -1:
-            logger.warning("Failed to load custom font, using default.")
+            logger.warning("사용자 지정 글꼴을 불러오지 못해 기본 글꼴을 사용합니다.")
         else:
             families = QFontDatabase.applicationFontFamilies(font_id)
             self.custom_font_family = families[0] if families else "default"
@@ -233,9 +243,38 @@ class PoEMarcutGUI(QMainWindow):
             self.leagues_ready.connect(self._on_leagues_ready)
             threading.Thread(target=self._check_github_update, daemon=True).start()
         except (RuntimeError, TypeError):
-            logger.exception("Failed to start background thread for github update check")
+            logger.exception("GitHub 업데이트 확인 백그라운드 스레드를 시작하지 못했습니다.")
 
-        logger.info("PoEMarcut initialized")
+        logger.info("PoEMarcut 초기화가 완료되었습니다.")
+
+    @staticmethod
+    def _format_game_label(game: object) -> str:
+        if game == 1:
+            return "PoE1"
+        if game == 2:  # noqa: PLR2004
+            return "PoE2"
+        return str(game)
+
+    @staticmethod
+    def _format_league_label(league: object) -> str:
+        league_str = str(league or "")
+        if not league_str:
+            return ""
+        return LEAGUE_DISPLAY_OVERRIDES.get(league_str.lower(), league_str)
+
+    @staticmethod
+    def _format_currency_label(currency_id: object, *, game: int | None = None) -> str:
+        return constants.get_currency_display_name(str(currency_id), game=game)
+
+    def _format_setting_list_item(self, *, setting: str, raw_text: object) -> str:
+        text = str(raw_text)
+        if setting == "poe1currencies":
+            return self._format_currency_label(text, game=1)
+        if setting == "poe2currencies":
+            return self._format_currency_label(text, game=2)
+        if setting in {"poe1leagues", "poe2leagues"}:
+            return self._format_league_label(text)
+        return text
 
     def init_ui(self) -> None:  # noqa: PLR0915
         """Set up the user interface components.
@@ -247,7 +286,7 @@ class PoEMarcutGUI(QMainWindow):
         central: QWidget = QWidget()
         main_layout: QGridLayout = QGridLayout()
 
-        self.currency_header: QLabel = QLabel("Currency Information")
+        self.currency_header: QLabel = QLabel("통화 정보")
         self.currency_header.setStyleSheet(poe_header_style)
         main_layout.addWidget(self.currency_header, 0, 0, 1, 1)
 
@@ -257,7 +296,7 @@ class PoEMarcutGUI(QMainWindow):
         league_widget: QWidget = QWidget()
         league_layout: QVBoxLayout = QVBoxLayout(league_widget)
         league_layout.setContentsMargins(0, 0, 0, 0)
-        league_label: QLabel = QLabel("Choose league:")
+        league_label: QLabel = QLabel("리그 선택:")
         league_layout.addWidget(league_label)
 
         self.league_combo: QComboBox = QComboBox()
@@ -273,7 +312,7 @@ class PoEMarcutGUI(QMainWindow):
         self.currency_lastupdate_label.setStyleSheet(f"color: {poe_text_color}; {poe_small_text};")
         league_layout.addWidget(self.currency_lastupdate_label)
 
-        self.currency_note_label: QLabel = QLabel("GGG only updates currency economy data once per hour.")
+        self.currency_note_label: QLabel = QLabel("GGG는 통화 경제 데이터를 한 시간에 한 번만 갱신합니다.")
         self.currency_note_label.setStyleSheet(f"color: {poe_text_color}; {poe_small_text};")
         league_layout.addWidget(self.currency_note_label)
 
@@ -284,7 +323,7 @@ class PoEMarcutGUI(QMainWindow):
         self.populate_currency_mappings()
 
         status_layout: QHBoxLayout = QHBoxLayout()
-        self.status_label: QLabel = QLabel("Status:")
+        self.status_label: QLabel = QLabel("상태:")
         self.status_label.setStyleSheet(f"{poe_small_text};")
         status_layout.addWidget(self.status_label)
         self.log_output_label: QLabel = QLabel("")
@@ -307,13 +346,13 @@ class PoEMarcutGUI(QMainWindow):
             logger.exception("Failed to connect log emitter to GUI slot")
         main_layout.addLayout(status_layout, 4, 0, 1, 3)
 
-        self.settings_button: QPushButton = QPushButton("Settings...")
+        self.settings_button: QPushButton = QPushButton("설정...")
         self.settings_button.clicked.connect(self.toggle_settings_window)
         main_layout.addWidget(self.settings_button, 5, 0, 1, 1)
 
         self.hotkeys_enabled: bool = False  # State for hotkeys button
 
-        self.hotkeys_button: QPushButton = QPushButton("Enable hotkeys")
+        self.hotkeys_button: QPushButton = QPushButton("단축키 활성화")
         self.hotkeys_button.clicked.connect(self.toggle_hotkeys)
         main_layout.addWidget(self.hotkeys_button, 5, 1, 1, 1)
 
@@ -333,7 +372,7 @@ class PoEMarcutGUI(QMainWindow):
         # Create a separate top-level window for Settings, positioned to the right of the main window
         self.settings_window: QWidget = QWidget()
         self.settings_window.setObjectName("SettingsWindow")
-        self.settings_window.setWindowTitle("PoE Marcut Settings")
+        self.settings_window.setWindowTitle("PoEMarcut 설정")
         if settings_icon_path.is_file():
             settings_icon: QIcon = QIcon(str(settings_icon_path))
             self.settings_window.setWindowIcon(settings_icon)
@@ -418,7 +457,7 @@ class PoEMarcutGUI(QMainWindow):
 
         ## set up components for Keys settings fields
         keys_settings: settings.KeySettings = settings_man.settings.keys
-        keys_settings_header: QLabel = QLabel("Keys settings")
+        keys_settings_header: QLabel = QLabel("키 설정")
         keys_settings_header.setStyleSheet(poe_header_style)
         leftthird_layout.addWidget(keys_settings_header, row_idx, 0, 1, 2)
         row_idx += 1
@@ -428,7 +467,7 @@ class PoEMarcutGUI(QMainWindow):
         self.key_lineedits: dict[str, QLineEdit] = {}
         for field_name, field_value in keys_settings:
             field_info = keys_settings.__class__.model_fields[field_name]
-            setting_label: QLabel = QLabel(f"{field_name}:".replace("_", " "))
+            setting_label: QLabel = QLabel(f"{KEY_SETTING_LABELS.get(field_name, field_name)}:")
             setting_label.setToolTip(field_info.description or "")
 
             lineedit: QLineEdit = QLineEdit(str(field_value))
@@ -444,13 +483,13 @@ class PoEMarcutGUI(QMainWindow):
 
         ## set up components for Logic settings fields
         logic_settings: settings.LogicSettings = settings_man.settings.logic
-        logic_settings_header: QLabel = QLabel("Logic settings")
+        logic_settings_header: QLabel = QLabel("가격 계산 설정")
         logic_settings_header.setStyleSheet(poe_header_style)
         leftthird_layout.addWidget(logic_settings_header, row_idx, 0, 1, 2)
         row_idx += 1
 
         # discount percent field
-        af_setting_label: QLabel = QLabel("Discount %")
+        af_setting_label: QLabel = QLabel("할인율 %")
         af_field_info = logic_settings.__class__.model_fields.get("discount_percent")
         af_setting_label.setToolTip((af_field_info.description if af_field_info is not None else "") or "")
         self.discount_percent_le: QLineEdit = QLineEdit(str(logic_settings.discount_percent))
@@ -467,7 +506,7 @@ class PoEMarcutGUI(QMainWindow):
         row_idx += 1
 
         # max actual discount field (percent)
-        maf_setting_label: QLabel = QLabel("Max discount")
+        maf_setting_label: QLabel = QLabel("최대 할인")
         maf_field_info = logic_settings.__class__.model_fields.get("max_actual_discount")
         maf_setting_label.setToolTip((maf_field_info.description if maf_field_info is not None else "") or "")
         self.max_actual_discount_le: QLineEdit = QLineEdit(str(logic_settings.max_actual_discount))
@@ -484,7 +523,7 @@ class PoEMarcutGUI(QMainWindow):
         row_idx += 1
 
         # enter after calcprice field
-        eac_setting_label: QLabel = QLabel("Press enter")
+        eac_setting_label: QLabel = QLabel("엔터 입력")
         eac_field_info = logic_settings.__class__.model_fields["enter_after_calcprice"]
         eac_setting_label.setToolTip(eac_field_info.description or "")
         self.enter_after_cb: QCheckBox = QCheckBox("")
@@ -497,7 +536,7 @@ class PoEMarcutGUI(QMainWindow):
         row_idx += 1
 
         # price delay field
-        pd_setting_label: QLabel = QLabel("Price delay")
+        pd_setting_label: QLabel = QLabel("가격 입력 지연")
         pd_field_info = logic_settings.__class__.model_fields["price_delay"]
         pd_setting_label.setToolTip(pd_field_info.description or "")
         self.price_delay_le: QLineEdit = QLineEdit(str(logic_settings.price_delay))
@@ -514,13 +553,13 @@ class PoEMarcutGUI(QMainWindow):
 
         # set up components for GUI settings fields
         gui_settings: settings.GuiSettings = settings_man.settings.gui
-        gui_settings_header: QLabel = QLabel("GUI settings")
+        gui_settings_header: QLabel = QLabel("GUI 설정")
         gui_settings_header.setStyleSheet(poe_header_style)
         leftthird_layout.addWidget(gui_settings_header, row_idx, 0, 1, 2)
         row_idx += 1
 
         # always on top field
-        always_on_top_label: QLabel = QLabel("Always on top")
+        always_on_top_label: QLabel = QLabel("항상 위")
         always_on_top_field_info = gui_settings.__class__.model_fields["always_on_top"]
         always_on_top_label.setToolTip(always_on_top_field_info.description or "")
         self.always_on_top_cb: QCheckBox = QCheckBox()
@@ -533,7 +572,7 @@ class PoEMarcutGUI(QMainWindow):
         row_idx += 1
 
         # minimize to tray field
-        minimize_to_tray_label: QLabel = QLabel("Minimize to tray")
+        minimize_to_tray_label: QLabel = QLabel("트레이로 최소화")
         minimize_to_tray_field_info = gui_settings.__class__.model_fields["minimize_to_tray"]
         minimize_to_tray_label.setToolTip(minimize_to_tray_field_info.description or "")
         self.minimize_to_tray_cb: QCheckBox = QCheckBox()
@@ -546,7 +585,7 @@ class PoEMarcutGUI(QMainWindow):
             if not QSystemTrayIcon.isSystemTrayAvailable():
                 self.minimize_to_tray_cb.setEnabled(False)
                 # Append availability note to the tooltip
-                note = " (disabled: system tray unavailable on this platform)"
+                note = " (비활성화됨: 이 플랫폼에서는 시스템 트레이를 사용할 수 없습니다)"
                 self.minimize_to_tray_cb.setToolTip((minimize_to_tray_field_info.description or "") + note)
         except (AttributeError, RuntimeError, TypeError):
             logger.exception("Failed to query system tray availability for minimize-to-tray checkbox")
@@ -555,7 +594,7 @@ class PoEMarcutGUI(QMainWindow):
         row_idx += 1
 
         # window position fields
-        window_position_label: QLabel = QLabel("Window position")
+        window_position_label: QLabel = QLabel("창 위치")
         window_position_field_info = gui_settings.__class__.model_fields["position"]
         window_position_label.setToolTip(window_position_field_info.description or "")
         leftthird_layout.addWidget(window_position_label, row_idx, 0)
@@ -576,7 +615,7 @@ class PoEMarcutGUI(QMainWindow):
         row_idx += 1
 
         # window size fields
-        window_size_label: QLabel = QLabel("Window size")
+        window_size_label: QLabel = QLabel("창 크기")
         window_size_field_info = gui_settings.__class__.model_fields["size"]
         window_size_label.setToolTip(window_size_field_info.description or "")
         leftthird_layout.addWidget(window_size_label, row_idx, 0)
@@ -606,13 +645,13 @@ class PoEMarcutGUI(QMainWindow):
 
         ## set up components for Currency settings fields
         currency_settings: settings.CurrencySettings = settings_man.settings.currency
-        currency_settings_header: QLabel = QLabel("Currency settings")
+        currency_settings_header: QLabel = QLabel("통화 설정")
         currency_settings_header.setStyleSheet(poe_header_style)
         middle_layout.addWidget(currency_settings_header)
 
         # assume highest currency field
         ahc_row_layout: QHBoxLayout = QHBoxLayout()
-        ahc_setting_label: QLabel = QLabel("Assume highest")
+        ahc_setting_label: QLabel = QLabel("상위 통화로 가정")
         ahc_field_info = currency_settings.__class__.model_fields["assume_highest_currency"]
         ahc_setting_label.setToolTip(ahc_field_info.description or "")
         ahc_row_layout.addWidget(ahc_setting_label, stretch=1)
@@ -626,7 +665,7 @@ class PoEMarcutGUI(QMainWindow):
 
         # poe1currencies field
         p1c_list_layout: QVBoxLayout = QVBoxLayout()
-        p1c_setting_label: QLabel = QLabel("PoE1 currencies")
+        p1c_setting_label: QLabel = QLabel("PoE1 통화")
         p1c_field_info = currency_settings.__class__.model_fields["poe1currencies"]
         p1c_setting_label.setToolTip(p1c_field_info.description or "")
         p1c_list_layout.addWidget(p1c_setting_label)
@@ -640,14 +679,14 @@ class PoEMarcutGUI(QMainWindow):
         middle_layout.addLayout(p1c_list_layout)
 
         # poe1 currencies button
-        self.add_poe1_currency_button: QPushButton = QPushButton("Add PoE1 currency...")
-        self.add_poe1_currency_button.setToolTip("Add a PoE1 currency to the conversion list")
+        self.add_poe1_currency_button: QPushButton = QPushButton("PoE1 통화 추가...")
+        self.add_poe1_currency_button.setToolTip("환산 목록에 PoE1 통화를 추가합니다.")
         self.add_poe1_currency_button.clicked.connect(self.add_poe1_currency)
         middle_layout.addWidget(self.add_poe1_currency_button)
 
         # poe2currencies field
         p2c_list_layout: QVBoxLayout = QVBoxLayout()
-        p2c_setting_label: QLabel = QLabel("PoE2 currencies")
+        p2c_setting_label: QLabel = QLabel("PoE2 통화")
         p2c_field_info = currency_settings.__class__.model_fields["poe2currencies"]
         p2c_setting_label.setToolTip(p2c_field_info.description or "")
         p2c_list_layout.addWidget(p2c_setting_label)
@@ -661,16 +700,16 @@ class PoEMarcutGUI(QMainWindow):
         middle_layout.addLayout(p2c_list_layout)
 
         # poe2 currencies button
-        self.add_poe2_currency_button: QPushButton = QPushButton("Add PoE2 currency...")
-        self.add_poe2_currency_button.setToolTip("Add a PoE2 currency to the conversion list")
+        self.add_poe2_currency_button: QPushButton = QPushButton("PoE2 통화 추가...")
+        self.add_poe2_currency_button.setToolTip("환산 목록에 PoE2 통화를 추가합니다.")
         self.add_poe2_currency_button.clicked.connect(self.add_poe2_currency)
         middle_layout.addWidget(self.add_poe2_currency_button)
 
         # active game field
-        ag_setting_label: QLabel = QLabel("Active game")
+        ag_setting_label: QLabel = QLabel("활성 게임")
         ag_field_info = currency_settings.__class__.model_fields["active_game"]
         ag_setting_label.setToolTip(ag_field_info.description or "")
-        self.active_game_le: QLineEdit = QLineEdit(str(currency_settings.active_game))
+        self.active_game_le: QLineEdit = QLineEdit(self._format_game_label(currency_settings.active_game))
         self.active_game_le.setReadOnly(True)
         middle_layout.addWidget(ag_setting_label)
         middle_layout.addWidget(self.active_game_le)
@@ -681,13 +720,13 @@ class PoEMarcutGUI(QMainWindow):
         ### right panel of settings
         rightthird_layout: QVBoxLayout = QVBoxLayout()
 
-        blank_header: QLabel = QLabel("Currency settings")
+        blank_header: QLabel = QLabel("통화 설정")
         blank_header.setStyleSheet("color: transparent;")
         rightthird_layout.addWidget(blank_header)
 
         # autoupdate field
         au_row_layout: QHBoxLayout = QHBoxLayout()
-        au_setting_label: QLabel = QLabel("Autoupdate")
+        au_setting_label: QLabel = QLabel("자동 업데이트")
         au_field_info = currency_settings.__class__.model_fields["autoupdate"]
         au_setting_label.setToolTip(au_field_info.description or "")
         au_row_layout.addWidget(au_setting_label, stretch=1)
@@ -699,7 +738,7 @@ class PoEMarcutGUI(QMainWindow):
 
         # poe1leagues field
         p1l_list_layout: QVBoxLayout = QVBoxLayout()
-        p1l_setting_label: QLabel = QLabel("PoE1 leagues")
+        p1l_setting_label: QLabel = QLabel("PoE1 리그")
         p1l_field_info = currency_settings.__class__.model_fields["poe1leagues"]
         p1l_setting_label.setToolTip(p1l_field_info.description or "")
         p1l_list_layout.addWidget(p1l_setting_label)
@@ -714,14 +753,14 @@ class PoEMarcutGUI(QMainWindow):
         rightthird_layout.addLayout(p1l_list_layout)
 
         # poe1 leagues button
-        self.get_poe1_leagues_button: QPushButton = QPushButton("Get PoE1 leagues")
-        self.get_poe1_leagues_button.setToolTip("Replace the PoE1 leagues with the list from GGG")
+        self.get_poe1_leagues_button: QPushButton = QPushButton("PoE1 리그 불러오기")
+        self.get_poe1_leagues_button.setToolTip("GGG 목록으로 PoE1 리그를 교체합니다.")
         self.get_poe1_leagues_button.clicked.connect(self.get_poe1_leagues)
         rightthird_layout.addWidget(self.get_poe1_leagues_button)
 
         # poe2leagues field
         p2l_list_layout: QVBoxLayout = QVBoxLayout()
-        p2l_setting_label: QLabel = QLabel("PoE2 leagues")
+        p2l_setting_label: QLabel = QLabel("PoE2 리그")
         p2l_field_info = currency_settings.__class__.model_fields["poe2leagues"]
         p2l_setting_label.setToolTip(p2l_field_info.description or "")
         p2l_list_layout.addWidget(p2l_setting_label)
@@ -736,16 +775,16 @@ class PoEMarcutGUI(QMainWindow):
         rightthird_layout.addLayout(p2l_list_layout)
 
         # poe2 leagues button
-        self.get_poe2_leagues_button: QPushButton = QPushButton("Get PoE2 leagues")
-        self.get_poe2_leagues_button.setToolTip("Replace the PoE2 leagues with the list from GGG")
+        self.get_poe2_leagues_button: QPushButton = QPushButton("PoE2 리그 불러오기")
+        self.get_poe2_leagues_button.setToolTip("GGG 목록으로 PoE2 리그를 교체합니다.")
         self.get_poe2_leagues_button.clicked.connect(self.get_poe2_leagues)
         rightthird_layout.addWidget(self.get_poe2_leagues_button)
 
         # active league field
-        al_setting_label: QLabel = QLabel("Active league")
+        al_setting_label: QLabel = QLabel("활성 리그")
         al_field_info = currency_settings.__class__.model_fields["active_league"]
         al_setting_label.setToolTip(al_field_info.description or "")
-        self.active_league_le: QLineEdit = QLineEdit(str(currency_settings.active_league))
+        self.active_league_le: QLineEdit = QLineEdit(self._format_league_label(currency_settings.active_league))
         self.active_league_le.setReadOnly(True)
         rightthird_layout.addWidget(al_setting_label)
         rightthird_layout.addWidget(self.active_league_le)
@@ -759,7 +798,14 @@ class PoEMarcutGUI(QMainWindow):
             logger.exception("Failed to connect settings_changed signal")
 
     def _make_list_item_widget(
-        self, text: str, list_widget: QListWidget, category: str, setting: str, *, allow_remove: bool = True
+        self,
+        text: str,
+        display_text: str,
+        list_widget: QListWidget,
+        category: str,
+        setting: str,
+        *,
+        allow_remove: bool = True,
     ) -> QWidget:
         """Create a QWidget containing a label and an 'X' remove button for a list item.
 
@@ -777,9 +823,10 @@ class PoEMarcutGUI(QMainWindow):
 
         """
         container = QWidget()
+        container.setProperty("rawText", text)
         layout = QHBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
-        label = QLabel(text)
+        label = QLabel(display_text)
         layout.addWidget(label, stretch=1)
         remove_btn = QPushButton("X")
         remove_btn.setFixedWidth(28)
@@ -788,7 +835,7 @@ class PoEMarcutGUI(QMainWindow):
             remove_btn.clicked.connect(partial(self._remove_list_item, list_widget, text, category, setting))
         else:
             # If removal is not allowed (last item), give a tooltip explaining why
-            remove_btn.setToolTip("Cannot remove the last item")
+            remove_btn.setToolTip("마지막 항목은 삭제할 수 없습니다.")
         layout.addWidget(remove_btn)
         return container
 
@@ -814,12 +861,14 @@ class PoEMarcutGUI(QMainWindow):
             if item is None:
                 continue
             w = list_widget.itemWidget(item)  # If we've set a custom widget for this item, read its label
-            item_text = None
-            if w is not None:
+            item_text = item.data(Qt.ItemDataRole.UserRole)
+            if item_text is None and w is not None:
+                item_text = w.property("rawText")
+            if item_text is None and w is not None:
                 lbl = w.findChild(QLabel)
                 if lbl is not None:
                     item_text = lbl.text()
-            else:
+            if item_text is None:
                 item_text = item.text()
             if item_text == text:
                 # Clean up the attached widget to avoid orphaned overlays
@@ -853,7 +902,7 @@ class PoEMarcutGUI(QMainWindow):
                     continue
                 if remaining <= 1:
                     btn.setEnabled(False)
-                    btn.setToolTip("Cannot remove the last item")
+                    btn.setToolTip("마지막 항목은 삭제할 수 없습니다.")
                 else:
                     btn.setEnabled(True)
                     btn.setToolTip("")
@@ -904,8 +953,17 @@ class PoEMarcutGUI(QMainWindow):
         total = len(items_list)
         for it in items_list:
             lw_item = QListWidgetItem()
+            raw_text = str(it)
+            lw_item.setData(Qt.ItemDataRole.UserRole, raw_text)
             # Disable remove when this is the only item
-            widget = self._make_list_item_widget(str(it), list_widget, category, setting, allow_remove=(total > 1))
+            widget = self._make_list_item_widget(
+                raw_text,
+                self._format_setting_list_item(setting=setting, raw_text=raw_text),
+                list_widget,
+                category,
+                setting,
+                allow_remove=(total > 1),
+            )
             lw_item.setSizeHint(widget.sizeHint())
             list_widget.addItem(lw_item)
             list_widget.setItemWidget(lw_item, widget)
@@ -1031,9 +1089,17 @@ class PoEMarcutGUI(QMainWindow):
             item = list_widget.item(i)
             if item is None:
                 continue
+            raw_data = item.data(Qt.ItemDataRole.UserRole)
+            if raw_data is not None:
+                items.append(str(raw_data))
+                continue
             # If we've set a custom widget, read the QLabel inside it; otherwise fall back to item.text()
             widget = list_widget.itemWidget(item)
             if widget is not None:
+                raw_text = widget.property("rawText")
+                if raw_text is not None:
+                    items.append(str(raw_text))
+                    continue
                 lbl = widget.findChild(QLabel)
                 if lbl is not None:
                     items.append(lbl.text())
@@ -1203,11 +1269,11 @@ class PoEMarcutGUI(QMainWindow):
             self.populate_currency_mappings()
         elif setting == "active_game":
             with QSignalBlocker(self.active_game_le):
-                self.active_game_le.setText(str(value))
+                self.active_game_le.setText(self._format_game_label(value))
             self.populate_currency_mappings()
         elif setting == "active_league":
             with QSignalBlocker(self.active_league_le):
-                self.active_league_le.setText(str(value))
+                self.active_league_le.setText(self._format_league_label(value))
         elif setting == "autoupdate":
             with QSignalBlocker(self.autoupdate_cb):
                 self.autoupdate_cb.setChecked(bool(value))
@@ -1273,11 +1339,11 @@ class PoEMarcutGUI(QMainWindow):
 
         # Create menu and actions (keep persistent parent references)
         menu = QMenu(self)
-        show_action = QAction("Show PoEMarcut", self)
+        show_action = QAction("PoEMarcut 열기", self)
         # Hotkeys state action - reflects current state and toggles hotkeys when clicked
-        hotkeys_text = "Hotkeys Enabled" if getattr(self, "hotkeys_enabled", False) else "Hotkeys Disabled"
+        hotkeys_text = "단축키 활성화됨" if getattr(self, "hotkeys_enabled", False) else "단축키 비활성화됨"
         hotkeys_action = QAction(hotkeys_text, self)
-        quit_action = QAction("Quit", self)
+        quit_action = QAction("종료", self)
         menu.addAction(show_action)
         menu.addAction(hotkeys_action)
         menu.addSeparator()
@@ -1524,22 +1590,22 @@ class PoEMarcutGUI(QMainWindow):
         """
         self.hotkeys_enabled = enabled
         if enabled:
-            self.hotkeys_button.setText("Disable hotkeys")
+            self.hotkeys_button.setText("단축키 비활성화")
             self.indicator.setStyleSheet(qradiobutton_greenlight)
-            self.indicator.setToolTip("Hotkeys enabled")
+            self.indicator.setToolTip("단축키 활성화됨")
             # Update tray menu action text if present
             if self._tray_hotkeys_action is not None:
                 try:
-                    self._tray_hotkeys_action.setText("Hotkeys Enabled")
+                    self._tray_hotkeys_action.setText("단축키 활성화됨")
                 except Exception:
                     logger.exception("Failed to update tray hotkeys action text to enabled")
             return
-        self.hotkeys_button.setText("Enable hotkeys")
+        self.hotkeys_button.setText("단축키 활성화")
         self.indicator.setStyleSheet(qradiobutton_redlight)
-        self.indicator.setToolTip("Hotkeys disabled")
+        self.indicator.setToolTip("단축키 비활성화됨")
         if self._tray_hotkeys_action is not None:
             try:
-                self._tray_hotkeys_action.setText("Hotkeys Disabled")
+                self._tray_hotkeys_action.setText("단축키 비활성화됨")
             except Exception:
                 logger.exception("Failed to update tray hotkeys action text to disabled")
 
@@ -1662,7 +1728,7 @@ class PoEMarcutGUI(QMainWindow):
 
         self.currency_list.clear()  # clear existing items before repopulating
         # Add a non-interactive header item at the top of the list
-        header = QListWidgetItem("Configured currency conversions:")
+        header = QListWidgetItem("설정된 통화 환산:")
         header.setFlags(Qt.ItemFlag.NoItemFlags)
         header.setTextAlignment(Qt.AlignmentFlag.AlignLeft)
         self.currency_list.addItem(header)
@@ -1678,14 +1744,14 @@ class PoEMarcutGUI(QMainWindow):
             if lower is not None:
                 try:
                     rate = currency.get_exchange_rate(game, league, c, lower, autoupdate=currency_settings.autoupdate)
-                    rate_text = f"({rate:.2f} {lower})"
+                    rate_text = f"({rate:.2f} {self._format_currency_label(lower, game=game)})"
                 except (LookupError, ValueError, TypeError):
                     rate = None
                     rate_text = ""
 
             # For the final currency (no lower), display "(final)" as its value.
-            display_value = rate_text if lower is not None else "(final)"
-            widget = self._make_currency_display_widget(str(c), display_value)
+            display_value = rate_text if lower is not None else "(최종)"
+            widget = self._make_currency_display_widget(self._format_currency_label(c, game=game), display_value)
             lw_item = QListWidgetItem()
             lw_item.setSizeHint(widget.sizeHint())
             self.currency_list.addItem(lw_item)
@@ -1698,7 +1764,7 @@ class PoEMarcutGUI(QMainWindow):
                 adj = 0
             arrow_text = "↓"
             if adj:
-                arrow_text = f"↓ if 1 or discount >{adj}%"
+                arrow_text = f"↓ 가격이 1이거나 할인율이 {adj}%를 넘으면"
 
             arrow_widget = QWidget()
             arrow_layout = QHBoxLayout(arrow_widget)
@@ -1742,12 +1808,12 @@ class PoEMarcutGUI(QMainWindow):
                     )
 
                     if converted_price is None:
-                        adj_text = f"1 {lower}"
+                        adj_text = f"1 {self._format_currency_label(lower, game=game)}"
                     else:
                         display_cur = converted_currency or lower
-                        adj_text = f"{int(converted_price)} {display_cur}"
+                        adj_text = f"{int(converted_price)} {self._format_currency_label(display_cur, game=game)}"
 
-                    adj_widget = self._make_currency_display_widget(f"{adj_discount}% off =", adj_text)
+                    adj_widget = self._make_currency_display_widget(f"{adj_discount}% 할인 =", adj_text)
                     adj_item = QListWidgetItem()
                     adj_item.setSizeHint(adj_widget.sizeHint())
                     adj_item.setFlags(Qt.ItemFlag.NoItemFlags)
@@ -1759,7 +1825,7 @@ class PoEMarcutGUI(QMainWindow):
             else:
                 # Final currency: add a vendor-it adjusted item
                 try:
-                    vendor_widget = self._make_currency_display_widget("=", "vendor it")
+                    vendor_widget = self._make_currency_display_widget("=", "상점 판매")
                     vendor_item = QListWidgetItem()
                     vendor_item.setSizeHint(vendor_widget.sizeHint())
                     vendor_item.setFlags(Qt.ItemFlag.NoItemFlags)
@@ -1814,9 +1880,9 @@ class PoEMarcutGUI(QMainWindow):
 
             # Update the read-only displays for active game/league
             with QSignalBlocker(self.active_game_le):
-                self.active_game_le.setText(str(currency_settings.active_game))
+                self.active_game_le.setText(self._format_game_label(currency_settings.active_game))
             with QSignalBlocker(self.active_league_le):
-                self.active_league_le.setText(str(currency_settings.active_league))
+                self.active_league_le.setText(self._format_league_label(currency_settings.active_league))
 
             # Refresh main currency list and last-update label
             self.populate_currency_mappings()
@@ -1846,13 +1912,14 @@ class PoEMarcutGUI(QMainWindow):
         delta_seconds = int(max(0, now - float(mtime)))
         hours = delta_seconds // 3600
         minutes = (delta_seconds % 3600) // 60
-        delta_str = f"{hours:02d}h:{minutes:02d}m"
-        updated_clock = time.strftime("%I:%M %p", time.localtime(mtime))
+        delta_str = f"{hours:02d}시간 {minutes:02d}분"
+        updated_clock = time.strftime("%H:%M", time.localtime(mtime))
         tz_abbr_raw = time.tzname[1] if time.localtime(mtime).tm_isdst > 0 else time.tzname[0]
         tz_abbr_filtered = "".join(ch for ch in tz_abbr_raw if "A" <= ch <= "Z")
         tz_abbr = tz_abbr_filtered or tz_abbr_raw
+        league_display = self._format_league_label(league)
         self.currency_lastupdate_label.setText(
-            f"Economy data for {league} last updated {delta_str} ago ({updated_clock} {tz_abbr})"
+            f"{league_display} 경제 데이터 갱신: {delta_str} 전 ({updated_clock} {tz_abbr})"
         )
 
     def _on_last_log_message(self, msg: str) -> None:
@@ -1986,8 +2053,8 @@ class PoEMarcutGUI(QMainWindow):
         try:
             if ver is not None:
                 # Make the label an external link to the releases page so clicks open the browser
-                self.github_update_label.setText(f'<a href="{update.GITHUB_RELEASE_URL}">🔔Update {ver} available!</a>')
-                self.github_update_label.setToolTip("Click to open the releases page on GitHub")
+                self.github_update_label.setText(f'<a href="{update.GITHUB_RELEASE_URL}">🔔 {ver} 업데이트 가능</a>')
+                self.github_update_label.setToolTip("클릭하면 GitHub 릴리스 페이지를 엽니다.")
                 # Allow QLabel to open external links directly; suppress if attribute missing
                 with contextlib.suppress(Exception):
                     self.github_update_label.setOpenExternalLinks(True)
@@ -2006,10 +2073,10 @@ class PoEMarcutGUI(QMainWindow):
         """
         self._add_currency(
             game=1,
-            merchant_map=constants.POE1_MERCHANT_CURRENCIES,
+            merchant_map=constants.POE1_MERCHANT_CURRENCY_DISPLAY_NAMES,
             setting_field="poe1currencies",
             list_widget=self.p1c_list_widget,
-            dialog_title="Add PoE1 currency",
+            dialog_title="PoE1 통화 추가",
         )
 
     def add_poe2_currency(self) -> None:
@@ -2021,10 +2088,10 @@ class PoEMarcutGUI(QMainWindow):
         """
         self._add_currency(
             game=2,
-            merchant_map=constants.POE2_MERCHANT_CURRENCIES,
+            merchant_map=constants.POE2_MERCHANT_CURRENCY_DISPLAY_NAMES,
             setting_field="poe2currencies",
             list_widget=self.p2c_list_widget,
-            dialog_title="Add PoE2 currency",
+            dialog_title="PoE2 통화 추가",
         )
 
     def _add_currency(
@@ -2074,7 +2141,7 @@ class PoEMarcutGUI(QMainWindow):
                 display_map[label] = k
 
             choice, ok = QInputDialog.getItem(
-                self, dialog_title, "Select currency:", display_items, current=0, editable=False
+                self, dialog_title, "통화 선택:", display_items, current=0, editable=False
             )
             if not ok or not choice:
                 return
@@ -2285,7 +2352,7 @@ if __name__ == "__main__":
         handlers=[stream_handler, file_handler, gui_handler],
     )
 
-    logger.info("Starting PoEMarcut")
+    logger.info("PoEMarcut을 시작합니다.")
     app = QApplication(sys.argv)
     window = PoEMarcutGUI()
     window.show()

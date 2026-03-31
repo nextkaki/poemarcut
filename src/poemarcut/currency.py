@@ -85,7 +85,7 @@ def _retrieve_currency_prices(game: int, league: str, *, update: bool = True) ->
 
     data: dict = {}
 
-    logger.info("Fetching currency prices for PoE%s '%s' (update=%s)...", game, league, update)
+    logger.info("PoE%s '%s' 통화 시세를 가져오는 중입니다. (업데이트=%s)", game, league, update)
     # Try cache file first. GGG currency exchange API data updates only hourly, so no need to fetch more often than that.
     try:
         cache_mtime: float = cache_file.stat().st_mtime if cache_file.exists() else 0
@@ -98,7 +98,7 @@ def _retrieve_currency_prices(game: int, league: str, *, update: bool = True) ->
             with cache_file.open("r", encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
         except (yaml.YAMLError, FileNotFoundError):
-            logger.exception("Error reading cache file")
+            logger.exception("캐시 파일을 읽는 중 오류가 발생했습니다.")
             data = {}
 
         # Check if cache data is valid by verifying primary currency exists in lines.
@@ -107,7 +107,7 @@ def _retrieve_currency_prices(game: int, league: str, *, update: bool = True) ->
         if "lines" in data and primary is not None and any(line.get("id") == primary for line in data.get("lines", [])):
             data["mtime"] = cache_mtime
             logger.info(
-                "Currency prices for PoE%s '%s' retrieved from cache (cache age: %.1f minutes)",
+                "PoE%s '%s' 통화 시세를 캐시에서 불러왔습니다. (캐시 경과 시간: %.1f분)",
                 game,
                 league,
                 (time.time() - cache_mtime) / 60,
@@ -115,7 +115,7 @@ def _retrieve_currency_prices(game: int, league: str, *, update: bool = True) ->
             return data
         if update is False:
             logger.error(
-                "Cache file for PoE%s league '%s' is invalid, but update is disabled. Returning empty data.",
+                "PoE%s '%s' 리그 캐시 파일이 잘못되었지만 업데이트가 꺼져 있어 빈 데이터를 반환합니다.",
                 game,
                 league,
             )
@@ -144,27 +144,27 @@ def _retrieve_currency_prices(game: int, league: str, *, update: bool = True) ->
             raise ValueError(msg)
         response.raise_for_status()
     except requests.RequestException:
-        logger.exception("Error fetching prices from poe.ninja")
+        logger.exception("poe.ninja에서 시세를 가져오는 중 오류가 발생했습니다.")
         response = None
 
     try:
         data = response.json() if response is not None else {}
     except (ValueError, requests.exceptions.JSONDecodeError):
-        logger.exception("Error parsing JSON from poe.ninja response")
+        logger.exception("poe.ninja 응답 JSON을 파싱하는 중 오류가 발생했습니다.")
         data = {}
 
     if "lines" not in data or "core" not in data or data["core"].get("primary") is None:
-        logger.error("Invalid data received from API for PoE%s '%s': %s", game, league, data)
+        logger.error("PoE%s '%s' API에서 잘못된 데이터를 받았습니다: %s", game, league, data)
         return data
 
     try:
         with cache_file.open("w", encoding="utf-8") as f:
             yaml.safe_dump(data, f)
     except (yaml.YAMLError, UnicodeDecodeError):
-        logger.exception("Error writing to cache file")
+        logger.exception("캐시 파일을 쓰는 중 오류가 발생했습니다.")
 
     data["mtime"] = cache_file.stat().st_mtime if cache_file.exists() else time.time()
-    logger.info("Currency prices for PoE%s league '%s' retrieved from poe.ninja API and cached", game, league)
+    logger.info("PoE%s '%s' 통화 시세를 poe.ninja API에서 가져와 캐시에 저장했습니다.", game, league)
     return data
 
 
@@ -181,7 +181,7 @@ def get_leagues(game: int) -> set[str] | None:
         set[str]: A set of available trade leagues for the specified game.
 
     """
-    logger.info("Fetching list of leagues for PoE%s from GGG trade API...", game)
+    logger.info("GGG 거래 API에서 PoE%s 리그 목록을 가져오는 중입니다...", game)
     response: requests.Response | None = None
     headers = {"User-Agent": USER_AGENT}
     try:
@@ -202,20 +202,20 @@ def get_leagues(game: int) -> set[str] | None:
             raise ValueError(msg)
         response.raise_for_status()
     except requests.RequestException:
-        logger.exception("Error fetching prices from poe.ninja")
+        logger.exception("GGG 거래 API에서 리그 목록을 가져오는 중 오류가 발생했습니다.")
         response = None
 
     try:
         data = response.json() if response is not None else {}
     except (ValueError, requests.exceptions.JSONDecodeError):
-        logger.exception("Error parsing JSON from poe.ninja response")
+        logger.exception("GGG 거래 API 응답 JSON을 파싱하는 중 오류가 발생했습니다.")
         data = {}
 
     if "result" not in data:
-        logger.error("Invalid data received from API for PoE%s: %s", game, data)
+        logger.error("PoE%s 리그 API에서 잘못된 데이터를 받았습니다: %s", game, data)
         return None
 
-    logger.info("Successfully fetched leagues for PoE%s: %s", game, {item.get("id") for item in data.get("result", [])})
+    logger.info("PoE%s 리그 목록을 성공적으로 가져왔습니다: %s", game, {item.get("id") for item in data.get("result", [])})
     # Only return ids of 'pc' (PoE1)/'poe2' leagues, we are not interested in realm or full text
     if game == 1:
         return {item.get("id") for item in data.get("result", []) if item.get("realm") == "pc"}

@@ -10,9 +10,13 @@ import logging
 import sys
 import time
 
-from poemarcut import currency, keyboard, settings, update
+from poemarcut import constants, currency, keyboard, settings, update
 from poemarcut.__init__ import __version__
 from poemarcut.constants import BOLD, RESET, S_IN_HOUR
+
+
+def _currency_name(game: int, currency_id: str) -> str:
+    return constants.get_currency_display_name(currency_id, game=game)
 
 
 def print_last_updated(game: int, league: str, file_mtime: float) -> None:
@@ -30,8 +34,9 @@ def print_last_updated(game: int, league: str, file_mtime: float) -> None:
     time_diff = time.time() - file_mtime
     diff_hours = int(time_diff // S_IN_HOUR)
     diff_mins = int((time_diff % S_IN_HOUR) // 60)
+    updated_at = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(file_mtime))
     print(
-        f"(PoE{game} currency data for '{league}' last updated: {diff_hours}h:{diff_mins:02d}m ago ({time.ctime(file_mtime)}))"
+        f"(PoE{game} '{league}' 통화 데이터 최근 갱신: {diff_hours}시간 {diff_mins:02d}분 전 ({updated_at}))"
     )
 
 
@@ -56,17 +61,19 @@ def print_poe1_currency_suggestions(discount_percent: int, data: dict) -> None:
                 "primaryValue"
             ]
         else:
-            print("Error: Invalid data, could not determine currency suggestions for PoE1.", file=sys.stderr)
+            print("오류: 잘못된 데이터라 PoE1 통화 추천값을 계산할 수 없습니다.", file=sys.stderr)
             return
 
         div_chaos_adj: float = 1 / chaos_div_val * (1.0 - (discount_percent / 100.0))
-        print(f"{BOLD}PoE1{RESET} suggested new currency setting if current setting is 1, based on current values:")
-        print(f"{discount_percent:.2f}% off ({(1.0 - discount_percent / 100.0):.2f}x) 1 Divine Orb")
-        print(f" = {int(div_chaos_adj)} Chaos Orb ({div_chaos_adj:.2f})")
-        print(f"{(1.0 - discount_percent / 100.0):.2f}x 1 Chaos Orb")
-        print(" = Just vendor it already!")
+        print(f"{BOLD}PoE1{RESET} 현재 시세 기준, 현재 설정값이 1일 때 추천 통화 설정:")
+        print(
+            f"{discount_percent:.2f}% 할인 ({(1.0 - discount_percent / 100.0):.2f}배) {_currency_name(1, 'divine')} 1개"
+        )
+        print(f" = {int(div_chaos_adj)} {_currency_name(1, 'chaos')} ({div_chaos_adj:.2f})")
+        print(f"{(1.0 - discount_percent / 100.0):.2f}배 {_currency_name(1, 'chaos')} 1개")
+        print(" = 그냥 상점에 파세요!")
     else:
-        print("Error: Invalid data, could not determine currency suggestions for PoE1.", file=sys.stderr)
+        print("오류: 잘못된 데이터라 PoE1 통화 추천값을 계산할 수 없습니다.", file=sys.stderr)
 
 
 def print_poe2_currency_suggestions(discount_percent: int, data: dict) -> None:
@@ -102,24 +109,30 @@ def print_poe2_currency_suggestions(discount_percent: int, data: dict) -> None:
         annul_chaos_adj: float = 1 / chaos_div_val * annul_div_val * (1.0 - (discount_percent / 100.0))
         annul_exalt_adj: float = 1 / exalt_div_val * annul_div_val * (1.0 - (discount_percent / 100.0))
         chaos_exalt_adj: float = 1 / exalt_div_val * chaos_div_val * (1.0 - (discount_percent / 100.0))
-        print(f"{BOLD}PoE2{RESET} suggested new currency setting if current setting is 1, based on current values:")
-        print(f"{discount_percent:.2f}% off ({(1.0 - discount_percent / 100.0):.2f}x) 1 Divine Orb")
-        print(f" = {int(div_annul_adj)} Orb of Annulment ({div_annul_adj:.2f})")
-        print(f" = {int(div_chaos_adj)} Chaos Orb ({div_chaos_adj:.2f})")
-        print(f" = {int(div_exalt_adj)} Exalted Orb ({div_exalt_adj:.2f})")
-        print(f"{discount_percent:.2f}% off ({(1.0 - discount_percent / 100.0):.2f}x) 1 Orb of Annulment")
-        print(f" = {int(annul_chaos_adj)} Chaos Orb ({annul_chaos_adj:.2f})")
-        print(f" = {int(annul_exalt_adj)} Exalted Orb ({annul_exalt_adj:.2f})")
-        print(f"{discount_percent:.2f}% off ({(1.0 - discount_percent / 100.0):.2f}x) 1 Chaos Orb")
+        print(f"{BOLD}PoE2{RESET} 현재 시세 기준, 현재 설정값이 1일 때 추천 통화 설정:")
         print(
-            f" = {int(chaos_exalt_adj)} Exalted Orb ({chaos_exalt_adj:.2f})",
+            f"{discount_percent:.2f}% 할인 ({(1.0 - discount_percent / 100.0):.2f}배) {_currency_name(2, 'divine')} 1개"
+        )
+        print(f" = {int(div_annul_adj)} {_currency_name(2, 'annul')} ({div_annul_adj:.2f})")
+        print(f" = {int(div_chaos_adj)} {_currency_name(2, 'chaos')} ({div_chaos_adj:.2f})")
+        print(f" = {int(div_exalt_adj)} {_currency_name(2, 'exalted')} ({div_exalt_adj:.2f})")
+        print(
+            f"{discount_percent:.2f}% 할인 ({(1.0 - discount_percent / 100.0):.2f}배) {_currency_name(2, 'annul')} 1개"
+        )
+        print(f" = {int(annul_chaos_adj)} {_currency_name(2, 'chaos')} ({annul_chaos_adj:.2f})")
+        print(f" = {int(annul_exalt_adj)} {_currency_name(2, 'exalted')} ({annul_exalt_adj:.2f})")
+        print(f"{discount_percent:.2f}% 할인 ({(1.0 - discount_percent / 100.0):.2f}배) {_currency_name(2, 'chaos')} 1개")
+        print(
+            f" = {int(chaos_exalt_adj)} {_currency_name(2, 'exalted')} ({chaos_exalt_adj:.2f})",
             end="",
         )
         print()
-        print(f"{discount_percent:.2f}% off ({(1.0 - discount_percent / 100.0):.2f}x) 1 Exalted Orb")
-        print(" = Just vendor it already!")
+        print(
+            f"{discount_percent:.2f}% 할인 ({(1.0 - discount_percent / 100.0):.2f}배) {_currency_name(2, 'exalted')} 1개"
+        )
+        print(" = 그냥 상점에 파세요!")
     else:
-        print("Error: Invalid data, could not determine currency suggestions for PoE2.", file=sys.stderr)
+        print("오류: 잘못된 데이터라 PoE2 통화 추천값을 계산할 수 없습니다.", file=sys.stderr)
 
 
 def main() -> int:  # noqa: C901, PLR0915
@@ -171,17 +184,17 @@ def main() -> int:  # noqa: C901, PLR0915
             None
 
         """
-        print("> PoEMarcut running <")
+        print("> PoEMarcut 실행 중 <")
         print(
-            f'Press "{_binding_to_str(binding=keys["copyitem_key"])}" or "ctrl+shift+c" with item hovered to copy to clipboard, then... '
+            f'아이템에 마우스를 올린 상태에서 "{_binding_to_str(binding=keys["copyitem_key"])}" 또는 "ctrl+shift+c"를 눌러 클립보드로 복사한 뒤...'
         )
         print(
-            f'Press "{_binding_to_str(binding=keys["rightclick_key"])}" or "right-click" with item hovered to open dialog, then... '
+            f'아이템에 마우스를 올린 상태에서 "{_binding_to_str(binding=keys["rightclick_key"])}" 또는 "우클릭"으로 가격 창을 연 뒤...'
         )
-        print(f'Press "{_binding_to_str(binding=keys["calcprice_key"])}" to adjust price')
+        print(f'"{_binding_to_str(binding=keys["calcprice_key"])}"를 눌러 가격을 조정하세요.')
         if not settings_man.settings.currency.autoupdate:
-            print(f'press "{_binding_to_str(binding=keys["enter_key"])}" or "enter" to set the new price.')
-        print(f'Press "{_binding_to_str(binding=keys["stop_key"])}" to exit the program.')
+            print(f'새 가격을 적용하려면 "{_binding_to_str(binding=keys["enter_key"])}" 또는 "enter"를 누르세요.')
+        print(f'프로그램을 종료하려면 "{_binding_to_str(binding=keys["stop_key"])}"를 누르세요.')
         print("================================")
 
     _print_instructions()
@@ -208,7 +221,7 @@ def main() -> int:  # noqa: C901, PLR0915
                     game=game, league=league, update=settings_man.settings.currency.autoupdate
                 )
             except (LookupError, ValueError, OSError):
-                print(f"Error: Could not retrieve currency data for PoE{game} ({league}).", file=sys.stderr)
+                print(f"오류: PoE{game} ({league}) 통화 데이터를 가져올 수 없습니다.", file=sys.stderr)
                 data = {}
             print_last_updated(game=game, league=league, file_mtime=data.get("mtime", 0))
 
@@ -220,13 +233,13 @@ def main() -> int:  # noqa: C901, PLR0915
                 print_poe2_currency_suggestions(discount_percent=discount_percent, data=data)
                 print()
             else:
-                print(f"Error: Could not retrieve currency suggestions for PoE{game}.", file=sys.stderr)
+                print(f"오류: PoE{game} 통화 추천값을 가져올 수 없습니다.", file=sys.stderr)
                 print()
 
         update_available, github_version = update.is_github_update_available()
         if update_available and github_version:
             print(
-                f"{BOLD}A newer version of PoEMarcut is available{RESET} at https://github.com/cdrg/poemarcut: {github_version} (you have {__version__})"
+                f"{BOLD}새로운 PoEMarcut 버전을 사용할 수 있습니다{RESET}: https://github.com/cdrg/poemarcut ({github_version}, 현재 버전 {__version__})"
             )
 
     _print_currency_suggestions(discount_percent=settings_man.settings.logic.discount_percent)
@@ -239,7 +252,7 @@ def main() -> int:  # noqa: C901, PLR0915
     except (RuntimeError, OSError):
         logging.getLogger(__name__).exception("Error while stopping keyboard listener on exit.")
 
-    print("Exiting PoEMarcut...")
+    print("PoEMarcut을 종료합니다...")
     return 0
 
 

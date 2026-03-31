@@ -40,17 +40,17 @@ class KeySettings(BaseModel):
 
     copyitem_key: str = Field(
         default="f1",
-        description="Copies the ctrl+atl+c text of the hovered item in the stash/market tab, including the price and currency type",
+        description="보관함 또는 거래 탭에서 마우스를 올린 아이템의 Ctrl+Alt+C 텍스트를 복사합니다. 가격과 통화 종류도 포함됩니다.",
     )
     rightclick_key: str = Field(
-        default="f2", description="'right-click' opens the item price dialog in market/stash tabs"
+        default="f2", description="거래/보관함 탭에서 아이템 가격 입력 창을 열기 위해 우클릭을 실행합니다."
     )
     calcprice_key: str = Field(
         default="f3",
-        description="Copies the old price, calculates new, and pastes new price into the dialog (and optionally presses 'enter')",
+        description="기존 가격을 복사해 새 가격을 계산한 뒤 입력 창에 붙여넣습니다. 필요하면 Enter까지 자동으로 누릅니다.",
     )
-    enter_key: str = Field(default="f4", description="'Enter' key confirms the new price in the dialog")
-    stop_key: str = Field(default="f6", description="Stop listening for hotkeys until re-enabled")
+    enter_key: str = Field(default="f4", description="가격 입력 창에서 새 가격을 Enter로 확정합니다.")
+    stop_key: str = Field(default="f6", description="다시 활성화할 때까지 단축키 감지를 중지합니다.")
 
     @field_validator("copyitem_key", "rightclick_key", "calcprice_key", "enter_key", "stop_key")
     @classmethod
@@ -78,7 +78,7 @@ class LogicSettings(BaseModel):
         default=10,
         ge=1,
         le=99,
-        description="Discount percent to apply to the current price (10% off a price of 100 would result in 90)",
+        description="현재 가격에 적용할 할인율입니다. 예를 들어 100에 10% 할인을 적용하면 90이 됩니다.",
     )
 
     # Maximum allowed discount percent (user-facing). For example, 50.0 means
@@ -87,44 +87,44 @@ class LogicSettings(BaseModel):
         default=50,
         ge=1,
         le=99,
-        description="Maximum allowed discount percent. If the calculated discount would exceed this percentage, the price will be converted or not be adjusted",
+        description="허용할 최대 할인율입니다. 계산된 할인율이 이 값을 넘으면 가격을 다른 통화로 환산하거나 조정하지 않습니다.",
     )
     enter_after_calcprice: bool = Field(
         default=True,
-        description="True: press 'enter' key after calculating and pasting the new price. False: do not press 'enter' automatically",
+        description="참이면 새 가격을 계산해 붙여넣은 뒤 Enter를 자동으로 누릅니다. 거짓이면 자동으로 누르지 않습니다.",
     )
     price_delay: float = Field(
         default=0.2,
         ge=0.1,
         le=5.0,
-        description="Delay in seconds between opening the price dialog and pasting new price",
+        description="가격 입력 창을 연 뒤 새 가격을 붙여넣기 전까지의 지연 시간(초)입니다.",
     )
 
 
 class WindowPosition(BaseModel):
     """Window position with explicit x/y coordinates."""
 
-    x: int = Field(default=400, description="X position of the main window")
-    y: int = Field(default=100, description="Y position of the main window")
+    x: int = Field(default=400, description="메인 창의 X 좌표입니다.")
+    y: int = Field(default=100, description="메인 창의 Y 좌표입니다.")
 
 
 class WindowSize(BaseModel):
     """Window size with explicit width/height."""
 
-    width: int = Field(default=450, description="Width of the main window")
-    height: int = Field(default=400, description="Height of the main window")
+    width: int = Field(default=450, description="메인 창의 너비입니다.")
+    height: int = Field(default=400, description="메인 창의 높이입니다.")
 
 
 class GuiSettings(BaseModel):
     """GUI settings for PoEMarcut."""
 
-    position: WindowPosition = Field(default_factory=WindowPosition, description="Position of the main window")
-    size: WindowSize = Field(default_factory=WindowSize, description="Size of the main window")
+    position: WindowPosition = Field(default_factory=WindowPosition, description="메인 창 위치입니다.")
+    size: WindowSize = Field(default_factory=WindowSize, description="메인 창 크기입니다.")
     always_on_top: bool = Field(
-        default=False, description="Whether the main window should always be on top of other windows"
+        default=False, description="메인 창을 항상 다른 창 위에 표시할지 여부입니다."
     )
     minimize_to_tray: bool = Field(
-        default=False, description="Whether to minimize the application to the system tray instead of the taskbar"
+        default=False, description="작업 표시줄 대신 시스템 트레이로 최소화할지 여부입니다."
     )
 
 
@@ -133,31 +133,31 @@ class CurrencySettings(BaseModel):
 
     autoupdate: bool = Field(
         default=True,
-        description="True: fetch up-to-date currency values. False: only use cached/manually set values",
+        description="참이면 최신 통화 시세를 가져오고, 거짓이면 캐시 또는 수동 설정 값만 사용합니다.",
     )
     poe1leagues: set[str] = Field(
-        default_factory=lambda: {"tmpstandard", "tmphardcore"}, description="The available PoE1 trade leagues"
+        default_factory=lambda: {"tmpstandard", "tmphardcore"}, description="사용 가능한 PoE1 거래 리그 목록입니다."
     )
     poe2leagues: set[str] = Field(
-        default_factory=lambda: {"tmpstandard", "tmphardcore"}, description="The available PoE2 trade leagues"
+        default_factory=lambda: {"tmpstandard", "tmphardcore"}, description="사용 가능한 PoE2 거래 리그 목록입니다."
     )
     poe1currencies: dict[str, int] = Field(
         default_factory=lambda: {"divine": 1, "chaos": 100},
-        description="List of PoE1 currencies and their values relative to the highest currency",
+        description="PoE1 통화 목록과 최상위 통화 기준 상대값입니다.",
     )
     poe2currencies: dict[str, int] = Field(
         default_factory=lambda: {"divine": 1, "chaos": 30, "exalted": 240},
-        description="List of PoE2 currencies and their values relative to the highest currency",
+        description="PoE2 통화 목록과 최상위 통화 기준 상대값입니다.",
     )
     assume_highest_currency: bool = Field(
         default=True,
-        description="True: If actual currency is not available, assume the value being modified is the highest currency",
+        description="실제 통화 종류를 알 수 없으면 현재 수정 중인 값을 최상위 통화로 가정합니다.",
     )
     active_game: Literal[1, 2] = Field(
         default=1,
-        description="The active game for currency values. 1 for PoE1, 2 for PoE2",
+        description="통화 시세에 사용할 현재 게임입니다. 1은 PoE1, 2는 PoE2입니다.",
     )
-    active_league: str = Field(default="tmpstandard", description="The active league to fetch currency values for")
+    active_league: str = Field(default="tmpstandard", description="통화 시세를 가져올 현재 리그입니다.")
 
     @field_serializer("poe1leagues", "poe2leagues", mode="plain")
     def _serialize_leagues(self, v: object) -> object:

@@ -32,6 +32,7 @@ def parse_int_price(raw: str) -> int:
 KR_CURRENCY_NAME_TO_ID: dict[str, str] = {
     # PoE1
     "혼돈의 오브": "chaos",
+    "카오스 오브": "chaos",
     "신성한 오브": "divine",
     "연금술의 오브": "alch",
     "고귀한 오브": "exalted",

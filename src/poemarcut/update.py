@@ -46,12 +46,12 @@ def get_github_version() -> str | None:
         response = requests.get(GITHUB_RELEASES_API_URL, timeout=5)
         response.raise_for_status()
     except requests.RequestException:
-        logger.exception("Error fetching current GitHub version number")
+        logger.exception("현재 GitHub 버전 정보를 가져오는 중 오류가 발생했습니다.")
         return None
     try:
         data = response.json()
     except (ValueError, requests.exceptions.JSONDecodeError):
-        logger.exception("Error: No JSON in response while fetching GitHub version number")
+        logger.exception("GitHub 버전 정보를 가져오는 응답에 JSON이 없습니다.")
         return None
     remote_ver = data.get("tag_name") or data.get("name")
 
@@ -67,7 +67,7 @@ def is_github_update_available() -> tuple[bool, str | None]:
         tuple[bool, str | None]: A tuple where the first element is a boolean indicating if an update is available, and the second element is the latest version string or None if no update is available.
 
     """
-    logger.info("Checking for updates on GitHub...")
+    logger.info("GitHub에서 업데이트를 확인하는 중입니다...")
     github_version = get_github_version()
     if not github_version:
         return False, None
@@ -78,7 +78,7 @@ def is_github_update_available() -> tuple[bool, str | None]:
     # If parsing produced non-empty tuples and remote > local, return True, otherwise False
     update_available = bool(remote_vt and local_vt and remote_vt > local_vt)
     if update_available:
-        logger.info("GitHub update available: %s", github_version)
+        logger.info("GitHub 업데이트를 사용할 수 있습니다: %s", github_version)
     else:
-        logger.info("Checked for update, none available.")
+        logger.info("업데이트 확인 완료: 최신 버전입니다.")
     return update_available, github_version

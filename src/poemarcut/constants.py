@@ -39,6 +39,35 @@ POE1_MERCHANT_CURRENCIES = MappingProxyType(
     }
 )
 
+POE1_MERCHANT_CURRENCY_DISPLAY_NAMES = MappingProxyType(
+    {
+        "chaos": "카오스 오브",
+        "divine": "신성한 오브",
+        "alch": "연금술의 오브",
+        "exalted": "고귀한 오브",
+        "alt": "변화의 오브",
+        "mirror": "칼란드라의 거울",
+        "chrome": "색채의 오브",
+        "blessed": "축복의 오브",
+        "fusing": "융합의 오브",
+        "jewellers": "보석공의 오브",
+        "regal": "고귀화의 오브",
+        "vaal": "바알 오브",
+        "chance": "기회의 오브",
+        "annul": "무효의 오브",
+        "aug": "증폭의 오브",
+        "regret": "후회의 오브",
+        "scour": "정화의 오브",
+        "transmute": "변환의 오브",
+        "wisdom": "지혜의 두루마리",
+        "portal": "차원문 두루마리",
+        "scrap": "갑옷공의 스크랩",
+        "whetstone": "대장장이의 숫돌",
+        "gcp": "보석 세공인의 프리즘",
+        "bauble": "유리공의 구슬",
+    }
+)
+
 # mapping of PoE1 merchant tab currency trade id to unique minimum full-name prefix for dropdown selection
 # ordered by the order in the merchant tab dropdown
 POE1_MERCHANT_CURRENCY_PREFIXES = MappingProxyType(
@@ -101,6 +130,35 @@ POE2_MERCHANT_CURRENCIES = MappingProxyType(
     }
 )
 
+POE2_MERCHANT_CURRENCY_DISPLAY_NAMES = MappingProxyType(
+    {
+        "exalted": "고귀한 오브",
+        "greater-exalted-orb": "상급 고귀한 오브",
+        "perfect-exalted-orb": "완벽한 고귀한 오브",
+        "divine": "신성한 오브",
+        "chaos": "카오스 오브",
+        "greater-chaos-orb": "상급 카오스 오브",
+        "perfect-chaos-orb": "완벽한 카오스 오브",
+        "alch": "연금술의 오브",
+        "annul": "무효의 오브",
+        "regal": "고귀화의 오브",
+        "greater-regal-orb": "상급 고귀화의 오브",
+        "perfect-regal-orb": "완벽한 고귀화의 오브",
+        "transmute": "변환의 오브",
+        "greater-orb-of-transmutation": "상급 변환의 오브",
+        "perfect-orb-of-transmutation": "완벽한 변환의 오브",
+        "aug": "증폭의 오브",
+        "greater-orb-of-augmentation": "상급 증폭의 오브",
+        "perfect-orb-of-augmentation": "완벽한 증폭의 오브",
+        "chance": "기회의 오브",
+        "vaal": "바알 오브",
+        "artificers": "장인의 오브",
+        "fracturing-orb": "파열의 오브",
+        "mirror": "칼란드라의 거울",
+        "wisdom": "지혜의 두루마리",
+    }
+)
+
 # mapping of PoE2 merchant tab currency trade id to unique minimum full-name prefix for dropdown selection
 # ordered by the order in the merchant tab dropdown
 POE2_MERCHANT_CURRENCY_PREFIXES = MappingProxyType(
@@ -139,6 +197,7 @@ POE2_MERCHANT_CURRENCY_PREFIXES = MappingProxyType(
 KR_CURRENCY_NAME_TO_ID = {
     # PoE1
     "혼돈의 오브": "chaos",
+    "카오스 오브": "chaos",
     "신성한 오브": "divine",
     "연금술의 오브": "alch",
     "고귀한 오브": "exalted",
@@ -166,6 +225,7 @@ KR_CURRENCY_NAME_TO_ID = {
     "고귀한 오브": "exalted",          # PoE2도 동일
     "신성한 오브": "divine",            # PoE2도 동일
     "혼돈의 오브": "chaos",             # PoE2도 동일
+    "카오스 오브": "chaos",             # PoE2도 동일
     "연금술의 오브": "alch",
     "무효의 오브": "annul",
     "고귀화의 오브": "regal",
@@ -178,3 +238,22 @@ KR_CURRENCY_NAME_TO_ID = {
     "칼란드라의 거울": "mirror",
     "지혜의 두루마리": "wisdom",
 }
+
+GAME_MERCHANT_CURRENCIES = MappingProxyType({1: POE1_MERCHANT_CURRENCIES, 2: POE2_MERCHANT_CURRENCIES})
+GAME_MERCHANT_CURRENCY_DISPLAY_NAMES = MappingProxyType(
+    {1: POE1_MERCHANT_CURRENCY_DISPLAY_NAMES, 2: POE2_MERCHANT_CURRENCY_DISPLAY_NAMES}
+)
+
+
+def get_currency_display_name(currency_id: str, *, game: int | None = None) -> str:
+    """Return a Korean display name for a currency id when known."""
+
+    key = str(currency_id).strip().lower()
+    if game in GAME_MERCHANT_CURRENCY_DISPLAY_NAMES:
+        return GAME_MERCHANT_CURRENCY_DISPLAY_NAMES[game].get(key, str(currency_id))
+
+    for mapping in GAME_MERCHANT_CURRENCY_DISPLAY_NAMES.values():
+        if key in mapping:
+            return mapping[key]
+
+    return str(currency_id)

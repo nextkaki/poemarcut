@@ -165,7 +165,7 @@ class KeyboardListenerManager:
         try:
             listener.start()
         except RuntimeError:
-            logger.exception("Exception while starting listener.")
+            logger.exception("리스너를 시작하는 중 오류가 발생했습니다.")
             # Ensure we don't keep a reference to a failed listener
             with self._lock:
                 if self._listener is listener:
@@ -195,7 +195,7 @@ class KeyboardListenerManager:
             with contextlib.suppress(RuntimeError):
                 listener.join(timeout=1.0)
         except RuntimeError:
-            logger.exception("Exception while stopping listener.")
+            logger.exception("리스너를 중지하는 중 오류가 발생했습니다.")
 
 
 # Module-level singleton instance
@@ -264,7 +264,7 @@ def on_release(  # noqa: C901, PLR0911, PLR0912, PLR0915
         try:
             key_strs: dict[str, str] = settings_manager.settings.keys.model_dump()
         except (AttributeError, TypeError, ValueError):
-            logger.exception("Failed to read key strings from settings.")
+            logger.exception("설정에서 키 바인딩을 읽는 중 오류가 발생했습니다.")
             return True
 
         with _parsed_keys_lock:
@@ -274,7 +274,7 @@ def on_release(  # noqa: C901, PLR0911, PLR0912, PLR0915
                     try:
                         _parsed_keys[k] = keyorkeycode_from_str(key_str=v)
                     except ValueError:
-                        logger.exception("Invalid hotkey binding '%s' for key '%s'; skipping.", v, k)
+                        logger.exception("키 '%s'의 단축키 바인딩 '%s'이(가) 잘못되어 건너뜁니다.", k, v)
                         # skip invalid binding but keep listener running
                 _cached_key_strs.clear()
                 _cached_key_strs.update(key_strs)
@@ -319,7 +319,7 @@ def on_release(  # noqa: C901, PLR0911, PLR0912, PLR0915
             and isinstance(key, (Key, KeyCode))
             and binding_matches(event_key=key, binding=copyitem_key)
         ):
-            logger.info("Attempting to extract price and currency type from hovered item.")
+            logger.info("마우스를 올린 아이템에서 가격과 통화 종류를 추출하는 중입니다.")
             # If game is 2, hold alt beforehand to prevent item info from being pinned
             # Send ctrl+alt+c to copy hovered item text to clipboard
             if game == 2:  # noqa: PLR2004
@@ -329,16 +329,17 @@ def on_release(  # noqa: C901, PLR0911, PLR0912, PLR0915
                 pyautogui.hotkey("ctrl", "alt", "c")
             item = Item.from_text(text=pyperclip.paste())
             if item is not None and item.note is not None:
+                currency_label = constants.get_currency_display_name(item.note.currency or "", game=game)
                 logger.info(
-                    "Extracted price '%s' and currency '%s' from hovered item '%s'.",
-                    item.note.price,
-                    item.note.currency,
+                    "마우스를 올린 아이템 '%s'에서 가격 '%s', 통화 '%s'을(를) 추출했습니다.",
                     item.name,
+                    item.note.price,
+                    currency_label,
                 )
                 price, cur_type = item.note.price, item.note.currency
             else:
                 logger.warning(
-                    "Failed to extract price and currency type from hovered item. Clipboard text was: %s",
+                    "마우스를 올린 아이템에서 가격과 통화 종류를 추출하지 못했습니다. 클립보드 내용: %s",
                     pyperclip.paste(),
                 )
                 price, cur_type = None, None
@@ -350,7 +351,7 @@ def on_release(  # noqa: C901, PLR0911, PLR0912, PLR0915
             and isinstance(key, (Key, KeyCode))
             and binding_matches(event_key=key, binding=rightclick_key)
         ):
-            logger.info("Attempting to open price dialog with right click.")
+            logger.info("우클릭으로 가격 입력 창을 여는 중입니다.")
             # Right click to open price dialog
             # prefer to use pydirectinput because pyautogui.rightclick doesn't work properly in the game
             if platform.system() == "Windows" and pydirectinput is not None:
@@ -363,7 +364,7 @@ def on_release(  # noqa: C901, PLR0911, PLR0912, PLR0915
             and isinstance(key, (Key, KeyCode))
             and binding_matches(event_key=key, binding=calcprice_key)
         ):
-            logger.info("Attempting to calculate discounted price and update clipboard and price dialog.")
+            logger.info("할인 가격을 계산하고 클립보드 및 가격 창을 갱신하는 중입니다.")
             # Copy (pre-selected) price to the clipboard
             # use pyautogui because it sends keys faster
             pyautogui.hotkey("ctrl", "c")
@@ -378,7 +379,7 @@ def on_release(  # noqa: C901, PLR0911, PLR0912, PLR0915
                     copied_price: int = parse_int_price(raw_clip)
                 except ValueError:
                     logger.warning(
-                        "Clipboard value '%s' is not a valid integer. Aborting price calculation.",
+                        "클립보드 값 '%s'은(는) 올바른 정수가 아닙니다. 가격 계산을 중단합니다.",
                         raw_clip,
                     )
                     return True  # do nothing if clipboard value is not a valid int
@@ -387,14 +388,14 @@ def on_release(  # noqa: C901, PLR0911, PLR0912, PLR0915
                     last_price is not None and last_price != copied_price
                 ):  # sanity check that both parsed prices are the same
                     logger.warning(
-                        "Clipboard price (%d) does not match expected last price (%d). Aborting price calculation.",
+                        "클립보드 가격(%d)이 예상한 이전 가격(%d)과 일치하지 않습니다. 가격 계산을 중단합니다.",
                         copied_price,
                         last_price,
                     )
                     return True  # do nothing if clipboard price doesn't match previously parsed price
 
                 if copied_price < 1:
-                    logger.error("Parsed price is less than 1 (%d). Aborting price calculation.", copied_price)
+                    logger.error("파싱된 가격이 1보다 작습니다(%d). 가격 계산을 중단합니다.", copied_price)
                     return True  # do nothing if current price is less than 1
 
                 # if we don't know the currency type and assume_highest is enabled, assume the currency type is the highest
@@ -439,7 +440,7 @@ def on_release(  # noqa: C901, PLR0911, PLR0912, PLR0915
 
                         if converted_price is None:
                             logger.info(
-                                "Unable to find a conversion path that respects max_actual_discount %.2f%%. Price not adjusted.",
+                                "최대 실제 할인율 %.2f%%를 지키는 환산 경로를 찾지 못했습니다. 가격을 조정하지 않습니다.",
                                 max_actual_discount,
                             )
                             return True
@@ -448,14 +449,17 @@ def on_release(  # noqa: C901, PLR0911, PLR0912, PLR0915
                         actual_discount = converted_actual
                         next_cur_type = converted_currency
                     elif copied_price == 1:
+                        current_currency = (
+                            constants.get_currency_display_name(last_cur_type, game=game) if last_cur_type else "알 수 없음"
+                        )
                         logger.info(
-                            "Price is 1 %s, but cannot convert to next currency. Either currency type is unknown, not in the list of convertible currencies, or is the final currency.",
-                            last_cur_type or "unknown",
+                            "가격이 1 %s이지만 다음 통화로 환산할 수 없습니다. 통화 종류를 모르거나, 환산 목록에 없거나, 마지막 통화입니다.",
+                            current_currency,
                         )
                         return True  # do nothing if parsed int is 1 and we do not know the currency type or it's the final type
                     elif actual_discount > float(max_actual_discount):
                         logger.info(
-                            "Calculated discount %.2f%% exceeds max allowed discount %.2f%%. Price not adjusted.",
+                            "계산된 할인율 %.2f%%가 허용 최대 할인율 %.2f%%를 초과했습니다. 가격을 조정하지 않습니다.",
                             actual_discount,
                             max_actual_discount,
                         )
@@ -469,7 +473,7 @@ def on_release(  # noqa: C901, PLR0911, PLR0912, PLR0915
 
                 # Paste the new price from clipboard
                 logger.info(
-                    "Pasting new price '%d', previous price was '%d'. (%.2f%%)",
+                    "새 가격 '%d'을(를) 붙여넣습니다. 이전 가격은 '%d'이었습니다. (%.2f%%)",
                     new_price,
                     copied_price,
                     actual_discount,
@@ -479,7 +483,10 @@ def on_release(  # noqa: C901, PLR0911, PLR0912, PLR0915
 
                 # Change currency dropdown if currency was converted
                 if next_cur_type is not None:
-                    logger.info("Attempting to select next currency '%s' in dropdown.", next_cur_type)
+                    logger.info(
+                        "드롭다운에서 다음 통화 '%s'을(를) 선택하는 중입니다.",
+                        constants.get_currency_display_name(next_cur_type, game=game),
+                    )
                     # tab to switch focus to currency dropdown
                     pyautogui.press("tab")
                     time.sleep(0.6)  # long delay is needed for the dropdown to be ready
@@ -502,7 +509,7 @@ def on_release(  # noqa: C901, PLR0911, PLR0912, PLR0915
                         # index_diff == 0 이면 이미 올바른 항목 선택됨
                     else:
                         logger.warning(
-                            "Unable to select next currency: current currency type '%s' is unknown or not in prefix map.",
+                            "다음 통화를 선택할 수 없습니다. 현재 통화 종류 '%s'을(를) 모르거나 prefix 맵에 없습니다.",
                             last_cur_type,
                         )
                         return True  # do nothing
@@ -531,7 +538,7 @@ def on_release(  # noqa: C901, PLR0911, PLR0912, PLR0915
             and isinstance(key, (Key, KeyCode))
             and binding_matches(event_key=key, binding=stop_key)
         ):
-            logger.info("Stop key pressed, stopping listener.")
+            logger.info("중지 키가 눌려 리스너를 종료합니다.")
             return False
 
     except (
@@ -541,7 +548,7 @@ def on_release(  # noqa: C901, PLR0911, PLR0912, PLR0915
         LookupError,
         pyperclip.PyperclipException,
     ):
-        logger.exception("Exception while handling key release event.")
+        logger.exception("키 해제 이벤트를 처리하는 중 오류가 발생했습니다.")
 
     return True
 
